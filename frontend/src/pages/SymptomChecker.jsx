@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import LanguagePicker from "../components/LanguagePicker";
 import DiagnosisCard from "../components/DiagnosisCard";
 import { checkSymptoms } from "../utils/api";
@@ -9,11 +9,19 @@ const SAMPLES = {
   es: "Tengo dolor de cabeza severo y fiebre alta por 2 días. Me siento muy cansado y mareado.",
 };
 
+const BASE = process.env.REACT_APP_API_URL;
+
 export default function SymptomChecker({ patientId, language, onLanguageChange }) {
   const [text, setText] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Voice recording state
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorder = useRef(null);
+  const audioChunks = useRef([]);
 
   const handleCheck = async () => {
     if (!text.trim()) return;
@@ -21,13 +29,72 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
     setError("");
     setResult(null);
     try {
-      const data = await checkSymptoms(patientId, text, language);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE}/api/symptoms/check`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ patient_id: patientId, text, language }),
+      });
+      const data = await res.json();
       if (data.detail) throw new Error(data.detail);
       setResult(data);
     } catch (e) {
       setError("Something went wrong. Please try again.");
     }
     setLoading(false);
+  };
+
+  // Start recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+
+      mediaRecorder.current.ondataavailable = (e) => {
+        audioChunks.current.push(e.data);
+      };
+
+      mediaRecorder.current.onstop = async () => {
+        setTranscribing(true);
+        const audioBlob = new Blob(audioChunks.current, { type: "audio/wav" });
+
+        // Send to Whisper endpoint
+        const formData = new FormData();
+        formData.append("audio", audioBlob, "recording.wav");
+        formData.append("patient_id", patientId);
+        formData.append("language", language === "en" ? "en" : language === "hi" ? "hi" : "es");
+
+        try {
+          const token = localStorage.getItem("token");
+          const res = await fetch(`${BASE}/api/voice/symptoms`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` },
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.transcribed_text) setText(data.transcribed_text);
+          if (data.suggestions) setResult(data);
+        } catch (e) {
+          setError("Voice transcription failed. Please try typing instead.");
+        }
+        setTranscribing(false);
+      };
+
+      mediaRecorder.current.start();
+      setRecording(true);
+    } catch (e) {
+      setError("Microphone access denied. Please allow microphone and try again.");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorder.current?.stop();
+    mediaRecorder.current?.stream.getTracks().forEach(t => t.stop());
+    setRecording(false);
   };
 
   return (
@@ -41,7 +108,7 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={language === "hi" ? "अपने लक्षण यहाँ लिखें..." : language === "es" ? "Describa sus síntomas..." : "Type symptoms here..."}
+          placeholder={language === "hi" ? "अपने लक्षण यहाँ लिखें या माइक बटन दबाएं..." : language === "es" ? "Escriba síntomas o presione el micrófono..." : "Type symptoms or press the mic button to speak..."}
           style={{
             width: "100%", minHeight: "100px", padding: "12px",
             borderRadius: "8px", border: "1.5px solid #E2E8F0",
@@ -50,7 +117,8 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
           }}
         />
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+        {/* Voice recording button */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
           <button onClick={handleCheck} disabled={loading} style={{
             padding: "10px 20px", background: "#0F4C81", color: "white",
             border: "none", borderRadius: "8px", cursor: "pointer",
@@ -58,6 +126,28 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
           }}>
             {loading ? "Analyzing..." : "Check Symptoms"}
           </button>
+
+          {/* Mic button */}
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            disabled={transcribing}
+            style={{
+              padding: "10px 16px",
+              background: recording ? "#EF4444" : "#10B981",
+              color: "white", border: "none", borderRadius: "8px",
+              cursor: "pointer", fontSize: "13px", fontWeight: "700",
+              display: "flex", alignItems: "center", gap: "6px"
+            }}
+          >
+            {transcribing ? "Transcribing..." : recording ? "Stop Recording" : "Speak Symptoms"}
+          </button>
+
+          {recording && (
+            <span style={{ fontSize: "12px", color: "#EF4444", fontWeight: "600", animation: "pulse 1s infinite" }}>
+              Recording...
+            </span>
+          )}
+
           <button onClick={() => setText(SAMPLES[language])} style={{
             padding: "10px 16px", background: "#F1F5F9", border: "none",
             borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
@@ -81,6 +171,13 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
 
       {result && (
         <>
+          {result.transcribed_text && (
+            <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: "10px", padding: "12px 16px", marginBottom: "16px" }}>
+              <div style={{ fontSize: "11px", fontWeight: "700", color: "#065F46", marginBottom: "4px" }}>TRANSCRIBED FROM VOICE</div>
+              <div style={{ fontSize: "13px", color: "#065F46" }}>{result.transcribed_text}</div>
+            </div>
+          )}
+
           <div style={{ background: "white", borderRadius: "12px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
             <div style={{ fontWeight: "700", fontSize: "14px", marginBottom: "10px" }}>Extracted Symptoms</div>
             <div>
