@@ -1,0 +1,31 @@
+# Virtual environment
+backend/clinical_env/
+
+# Environment variables - never push API keys
+backend/.env
+frontend/.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# ML models
+ml/models/*.pkl
+ml/models/*.h5
+.ipynb_checkpoints/
+
+# Node modules
+frontend/node_modules/
+
+# Build folder
+frontend/build/
+
+# Mac files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
