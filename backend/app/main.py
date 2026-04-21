@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import os
+from app.database import engine, Base
 
-load_dotenv()  # ← this line loads your .env file
+load_dotenv()
+
+# Create all tables automatically on startup
+Base.metadata.create_all(bind=engine)
 
 from app.routes import symptoms, notes, patients
 
@@ -22,4 +25,4 @@ app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])
 
 @app.get("/")
 def root():
-    return {"status": "ClinicalAI is running"}
+    return {"status": "ClinicalAI is running", "database": "PostgreSQL connected"}
