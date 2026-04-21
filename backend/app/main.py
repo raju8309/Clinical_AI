@@ -5,10 +5,12 @@ from app.database import engine, Base
 
 load_dotenv()
 
-# Create all tables automatically on startup
+# Import models so tables get created
+from app.models import db_models, user_models
+
 Base.metadata.create_all(bind=engine)
 
-from app.routes import symptoms, notes, patients
+from app.routes import symptoms, notes, patients, auth
 
 app = FastAPI(title="ClinicalAI", version="1.0.0")
 
@@ -19,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router,     prefix="/api/auth",     tags=["Auth"])
 app.include_router(symptoms.router, prefix="/api/symptoms", tags=["Symptoms"])
 app.include_router(notes.router,    prefix="/api/notes",    tags=["Notes"])
 app.include_router(patients.router, prefix="/api/patients", tags=["Patients"])

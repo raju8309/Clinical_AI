@@ -4,11 +4,16 @@ from app.models.schemas import SymptomInput
 from app.services.symptom_service import check_symptoms
 from app.services.patient_service import save_visit
 from app.database import get_db
+from app.auth import get_current_user
 
 router = APIRouter()
 
 @router.post("/check")
-def check_patient_symptoms(body: SymptomInput, db: Session = Depends(get_db)):
+def check_patient_symptoms(
+    body: SymptomInput,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
     try:
         result = check_symptoms(body.text, body.language, body.patient_id)
         if result.get("suggestions"):
