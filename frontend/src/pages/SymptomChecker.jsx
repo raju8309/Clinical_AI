@@ -1,6 +1,9 @@
 import { useState, useRef } from "react";
 import LanguagePicker from "../components/LanguagePicker";
 import DiagnosisCard from "../components/DiagnosisCard";
+import LoadingButton from "../components/LoadingButton";
+import ErrorBox from "../components/ErrorBox";
+import Spinner from "../components/Spinner";
 import { checkSymptoms } from "../utils/api";
 
 const SAMPLES = {
@@ -16,8 +19,6 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  // Voice recording state
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const mediaRecorder = useRef(null);
@@ -29,45 +30,28 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
     setError("");
     setResult(null);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${BASE}/api/symptoms/check`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ patient_id: patientId, text, language }),
-      });
-      const data = await res.json();
+      const data = await checkSymptoms(patientId, text, language);
       if (data.detail) throw new Error(data.detail);
       setResult(data);
     } catch (e) {
-      setError("Something went wrong. Please try again.");
+      setError(e.message || "Could not analyze symptoms. Please try again.");
     }
     setLoading(false);
   };
 
-  // Start recording
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorder.current = new MediaRecorder(stream);
       audioChunks.current = [];
-
-      mediaRecorder.current.ondataavailable = (e) => {
-        audioChunks.current.push(e.data);
-      };
-
+      mediaRecorder.current.ondataavailable = (e) => audioChunks.current.push(e.data);
       mediaRecorder.current.onstop = async () => {
         setTranscribing(true);
         const audioBlob = new Blob(audioChunks.current, { type: "audio/wav" });
-
-        // Send to Whisper endpoint
         const formData = new FormData();
         formData.append("audio", audioBlob, "recording.wav");
         formData.append("patient_id", patientId);
-        formData.append("language", language === "en" ? "en" : language === "hi" ? "hi" : "es");
-
+        formData.append("language", language);
         try {
           const token = localStorage.getItem("token");
           const res = await fetch(`${BASE}/api/voice/symptoms`, {
@@ -83,7 +67,6 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
         }
         setTranscribing(false);
       };
-
       mediaRecorder.current.start();
       setRecording(true);
     } catch (e) {
@@ -98,8 +81,12 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
   };
 
   return (
-    <div>
-      <div style={{ background: "white", borderRadius: "12px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+    <div className="fade-in">
+      <div style={{
+        background: "white", borderRadius: "12px",
+        padding: "20px", marginBottom: "16px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+      }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
           <span style={{ fontWeight: "700", fontSize: "14px" }}>Patient describes symptoms</span>
           <LanguagePicker selected={language} onChange={onLanguageChange} />
@@ -108,26 +95,29 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={language === "hi" ? "अपने लक्षण यहाँ लिखें या माइक बटन दबाएं..." : language === "es" ? "Escriba síntomas o presione el micrófono..." : "Type symptoms or press the mic button to speak..."}
+          placeholder={
+            language === "hi" ? "अपने लक्षण यहाँ लिखें या माइक बटन दबाएं..." :
+            language === "es" ? "Escriba síntomas o presione el micrófono..." :
+            "Type symptoms or press the mic button to speak..."
+          }
           style={{
             width: "100%", minHeight: "100px", padding: "12px",
             borderRadius: "8px", border: "1.5px solid #E2E8F0",
             fontSize: "14px", fontFamily: "inherit", resize: "vertical",
-            outline: "none", boxSizing: "border-box", lineHeight: "1.6"
+            outline: "none", boxSizing: "border-box", lineHeight: "1.6",
+            transition: "border-color 0.2s"
           }}
         />
 
-        {/* Voice recording button */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
-          <button onClick={handleCheck} disabled={loading} style={{
-            padding: "10px 20px", background: "#0F4C81", color: "white",
-            border: "none", borderRadius: "8px", cursor: "pointer",
-            fontSize: "13px", fontWeight: "700"
-          }}>
-            {loading ? "Analyzing..." : "Check Symptoms"}
-          </button>
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap", alignItems: "center" }}>
+          <LoadingButton
+            loading={loading}
+            onClick={handleCheck}
+            loadingText="Analyzing..."
+          >
+            Check Symptoms
+          </LoadingButton>
 
-          {/* Mic button */}
           <button
             onClick={recording ? stopRecording : startRecording}
             disabled={transcribing}
@@ -135,7 +125,8 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
               padding: "10px 16px",
               background: recording ? "#EF4444" : "#10B981",
               color: "white", border: "none", borderRadius: "8px",
-              cursor: "pointer", fontSize: "13px", fontWeight: "700",
+              cursor: transcribing ? "not-allowed" : "pointer",
+              fontSize: "13px", fontWeight: "700",
               display: "flex", alignItems: "center", gap: "6px"
             }}
           >
@@ -143,37 +134,45 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
           </button>
 
           {recording && (
-            <span style={{ fontSize: "12px", color: "#EF4444", fontWeight: "600", animation: "pulse 1s infinite" }}>
+            <span style={{
+              fontSize: "12px", color: "#EF4444",
+              fontWeight: "600", animation: "pulse 1s infinite"
+            }}>
               Recording...
             </span>
           )}
 
           <button onClick={() => setText(SAMPLES[language])} style={{
             padding: "10px 16px", background: "#F1F5F9", border: "none",
-            borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
+            borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600",
+            color: "#475569"
           }}>
             Load Sample
           </button>
-          <button onClick={() => { setText(""); setResult(null); }} style={{
+
+          <button onClick={() => { setText(""); setResult(null); setError(""); }} style={{
             padding: "10px 16px", background: "#F1F5F9", border: "none",
-            borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
+            borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600",
+            color: "#475569"
           }}>
             Clear
           </button>
         </div>
       </div>
 
-      {error && (
-        <div style={{ background: "#FEE2E2", border: "1px solid #FECACA", borderRadius: "10px", padding: "12px", color: "#991B1B", fontSize: "13px", marginBottom: "16px" }}>
-          {error}
-        </div>
-      )}
+      {error && <ErrorBox message={error} onRetry={handleCheck} />}
+      {loading && <Spinner text="Analyzing symptoms with AI..." />}
 
-      {result && (
-        <>
+      {result && !loading && (
+        <div className="fade-in">
           {result.transcribed_text && (
-            <div style={{ background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: "10px", padding: "12px 16px", marginBottom: "16px" }}>
-              <div style={{ fontSize: "11px", fontWeight: "700", color: "#065F46", marginBottom: "4px" }}>TRANSCRIBED FROM VOICE</div>
+            <div style={{
+              background: "#F0FDF4", border: "1px solid #86EFAC",
+              borderRadius: "10px", padding: "12px 16px", marginBottom: "16px"
+            }}>
+              <div style={{ fontSize: "11px", fontWeight: "700", color: "#065F46", marginBottom: "4px" }}>
+                TRANSCRIBED FROM VOICE
+              </div>
               <div style={{ fontSize: "13px", color: "#065F46" }}>{result.transcribed_text}</div>
             </div>
           )}
@@ -182,7 +181,12 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
             <div style={{ fontWeight: "700", fontSize: "14px", marginBottom: "10px" }}>Extracted Symptoms</div>
             <div>
               {result.extracted_symptoms?.map((s, i) => (
-                <span key={i} style={{ display: "inline-block", padding: "4px 12px", background: "#EFF6FF", color: "#1D4ED8", borderRadius: "20px", fontSize: "12px", fontWeight: "600", margin: "3px" }}>
+                <span key={i} style={{
+                  display: "inline-block", padding: "4px 12px",
+                  background: "#EFF6FF", color: "#1D4ED8",
+                  borderRadius: "20px", fontSize: "12px",
+                  fontWeight: "600", margin: "3px"
+                }}>
                   {s}
                 </span>
               ))}
@@ -205,10 +209,14 @@ export default function SymptomChecker({ patientId, language, onLanguageChange }
             </div>
           )}
 
-          <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: "10px", padding: "12px", fontSize: "12px", color: "#9A3412" }}>
+          <div style={{
+            background: "#FFF7ED", border: "1px solid #FED7AA",
+            borderRadius: "10px", padding: "12px",
+            fontSize: "12px", color: "#9A3412"
+          }}>
             {result.disclaimer}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

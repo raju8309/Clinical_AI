@@ -1,6 +1,9 @@
 import { useState } from "react";
 import LanguagePicker from "../components/LanguagePicker";
 import SOAPNote from "../components/SOAPNote";
+import LoadingButton from "../components/LoadingButton";
+import ErrorBox from "../components/ErrorBox";
+import Spinner from "../components/Spinner";
 import { generateNote } from "../utils/api";
 
 const SAMPLE = `Doctor: Good morning, how are you feeling?
@@ -27,14 +30,18 @@ export default function NoteWriter({ patientId, language, onLanguageChange }) {
       if (data.detail) throw new Error(data.detail);
       setResult(data);
     } catch (e) {
-      setError("Something went wrong. Please try again.");
+      setError(e.message || "Could not generate note. Please try again.");
     }
     setLoading(false);
   };
 
   return (
-    <div>
-      <div style={{ background: "white", borderRadius: "12px", padding: "20px", marginBottom: "16px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+    <div className="fade-in">
+      <div style={{
+        background: "white", borderRadius: "12px",
+        padding: "20px", marginBottom: "16px",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+      }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
           <span style={{ fontWeight: "700", fontSize: "14px" }}>Paste doctor-patient conversation</span>
           <LanguagePicker selected={language} onChange={onLanguageChange} />
@@ -52,37 +59,41 @@ export default function NoteWriter({ patientId, language, onLanguageChange }) {
           }}
         />
 
-        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-          <button onClick={handleGenerate} disabled={loading} style={{
-            padding: "10px 20px", background: "#0F4C81", color: "white",
-            border: "none", borderRadius: "8px", cursor: "pointer",
-            fontSize: "13px", fontWeight: "700"
-          }}>
-            {loading ? "Generating..." : "Generate SOAP Note"}
-          </button>
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
+          <LoadingButton
+            loading={loading}
+            onClick={handleGenerate}
+            loadingText="Generating SOAP Note..."
+          >
+            Generate SOAP Note
+          </LoadingButton>
+
           <button onClick={() => setTranscript(SAMPLE)} style={{
             padding: "10px 16px", background: "#F1F5F9", border: "none",
-            borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
+            borderRadius: "8px", cursor: "pointer", fontSize: "12px",
+            fontWeight: "600", color: "#475569"
           }}>
             Load Sample
           </button>
-          <button onClick={() => { setTranscript(""); setResult(null); }} style={{
+
+          <button onClick={() => { setTranscript(""); setResult(null); setError(""); }} style={{
             padding: "10px 16px", background: "#F1F5F9", border: "none",
-            borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600"
+            borderRadius: "8px", cursor: "pointer", fontSize: "12px",
+            fontWeight: "600", color: "#475569"
           }}>
             Clear
           </button>
         </div>
       </div>
 
-      {error && (
-        <div style={{ background: "#FEE2E2", border: "1px solid #FECACA", borderRadius: "10px", padding: "12px", color: "#991B1B", fontSize: "13px", marginBottom: "16px" }}>
-          {error}
-        </div>
-      )}
+      {error && <ErrorBox message={error} onRetry={handleGenerate} />}
+      {loading && <Spinner text="Generating clinical SOAP note..." />}
 
-      {result && (
-        <div style={{ background: "white", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+      {result && !loading && (
+        <div className="fade-in" style={{
+          background: "white", borderRadius: "12px",
+          padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
+        }}>
           <SOAPNote note={result.soap_note} />
         </div>
       )}
