@@ -9,10 +9,8 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: clinicalai-backend
-  EC2_HOST: ${{ secrets.EC2_HOST }}
 
 jobs:
-  # ── Job 1: Test Backend ──────────────────────────
   test-backend:
     name: Run Backend Tests
     runs-on: ubuntu-latest
@@ -39,7 +37,6 @@ jobs:
           cd backend
           pytest tests/ -v
 
-  # ── Job 2: Test Frontend ─────────────────────────
   test-frontend:
     name: Run Frontend Build
     runs-on: ubuntu-latest
@@ -60,7 +57,6 @@ jobs:
           npm install
           npm run build
 
-  # ── Job 3: Build and Push to ECR ─────────────────
   build-and-push:
     name: Build Docker Image and Push to ECR
     runs-on: ubuntu-latest
@@ -91,9 +87,7 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:latest" >> $GITHUB_OUTPUT
 
-  # ── Job 4: Deploy to EC2 ─────────────────────────
   deploy-to-ec2:
     name: Deploy to EC2
     runs-on: ubuntu-latest
@@ -101,32 +95,25 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > ~/.ssh/clinicalai-key.pem
+          chmod 400 ~/.ssh/clinicalai-key.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            # Login to ECR
+        run: |
+          ssh -i ~/.ssh/clinicalai-key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 131904957048.dkr.ecr.us-east-1.amazonaws.com
-
-            # Pull latest image
             docker pull 131904957048.dkr.ecr.us-east-1.amazonaws.com/clinicalai-backend:latest
-
-            # Stop and remove old container
             docker stop clinicalai-backend || true
             docker rm clinicalai-backend || true
-
-            # Run new container
             docker run -d \
               --name clinicalai-backend \
               --restart always \
               -p 8000:8000 \
-              -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
-              -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
-              -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+              --env-file /home/ec2-user/.env \
               131904957048.dkr.ecr.us-east-1.amazonaws.com/clinicalai-backend:latest
-
-            echo "Deployment complete!"
             docker ps
+          ENDSSH
