@@ -31,3 +31,5 @@ frontend/build/
 .idea/
 backend/test.db
 test.db
+ml/data/*.csv
+ml/data/*.json
