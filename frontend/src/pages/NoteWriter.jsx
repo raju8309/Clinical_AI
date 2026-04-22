@@ -94,7 +94,7 @@ export default function NoteWriter({ patientId, language, onLanguageChange }) {
           background: "white", borderRadius: "12px",
           padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)"
         }}>
-          <SOAPNote note={result.soap_note} />
+          <SOAPNote note={result.soap_note} patientId={patientId} />
         </div>
       )}
     </div>
