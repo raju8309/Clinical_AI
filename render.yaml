@@ -1,5 +1,4 @@
 services:
-  # Backend API
   - type: web
     name: clinicalai-backend
     runtime: docker
@@ -12,9 +11,9 @@ services:
         sync: false
       - key: SECRET_KEY
         sync: false
-    healthCheckPath: /
+      - key: OPENAI_API_KEY
+        sync: false
 
-  # Frontend Static Site
   - type: web
     name: clinicalai-frontend
     runtime: static
@@ -22,7 +21,7 @@ services:
     staticPublishPath: ./frontend/build
     envVars:
       - key: REACT_APP_API_URL
-        sync: false
+        value: https://clinical-ai-bozh.onrender.com
     routes:
       - type: rewrite
         source: /*
