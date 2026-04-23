@@ -51,7 +51,7 @@ jobs:
 
       - name: Install and build
         env:
-          REACT_APP_API_URL: http://52.70.121.20:8000
+          REACT_APP_API_URL: https://52.70.121.20.nip.io
           CI: false
         run: |
           cd frontend
@@ -103,9 +103,11 @@ jobs:
 
     steps:
       - name: Setup SSH key
+        env:
+          SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > ~/.ssh/clinicalai-key.pem
+          echo "$SSH_KEY" > ~/.ssh/clinicalai-key.pem
           chmod 400 ~/.ssh/clinicalai-key.pem
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
@@ -149,3 +151,9 @@ jobs:
       - name: Deploy to S3
         run: |
           aws s3 sync frontend/build/ s3://${{ env.S3_BUCKET }} --delete --region ${{ env.AWS_REGION }}
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E4SG9YM9I0K7L \
+            --paths "/*"
