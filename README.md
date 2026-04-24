@@ -1,5 +1,6 @@
 # ClinicalAI
-### Multilingual Patient Assistant for Small Clinics
+
+**Multilingual Patient Assistant for Small Clinics**
 
 A full-stack AI-powered clinical assistant that helps doctors with symptom checking, SOAP note generation, and patient history tracking. Built to democratize access to AI healthcare tools for small clinics priced out of enterprise solutions like Google MedLM and Microsoft DAX.
 
@@ -9,12 +10,13 @@ A full-stack AI-powered clinical assistant that helps doctors with symptom check
 
 | | URL |
 |---|---|
-| **Frontend** | https://clinical-ai-1.onrender.com |
-| **Backend API** | https://clinical-ai-bozh.onrender.com |
-| **API Docs** | https://clinical-ai-bozh.onrender.com/docs |
-| **GitHub** | https://github.com/raju8309/Clinical_AI |
+| Frontend | https://clinical-ai-1.onrender.com |
+| Backend API | https://clinical-ai-bozh.onrender.com |
+| API Docs | https://clinical-ai-bozh.onrender.com/docs |
+| GitHub | https://github.com/raju8309/Clinical_AI |
 
-**Demo Credentials:**
+**Demo Credentials**
+
 - Email: `doctor@clinic.com`
 - Password: `doctor123`
 
@@ -33,14 +35,20 @@ A full-stack AI-powered clinical assistant that helps doctors with symptom check
 ---
 
 ## Architecture
-Frontend (React)          Backend (FastAPI)         ML Model
-──────────────────        ──────────────────        ──────────────────
-React + TailwindCSS  →   FastAPI + SQLAlchemy  →   Logistic Regression
-Render Static Site        Render Web Service        Scikit-learn
-PostgreSQL                4920 samples
-JWT Auth                  41 diseases
-Anthropic Claude          131 symptoms
-OpenAI Whisper API        100% CV accuracy
+
+```
+Frontend (React)       Backend (FastAPI)        ML Model
+──────────────────     ──────────────────       ──────────────────
+React 18               Python 3.11              Logistic Regression
+Render Static Site     FastAPI                  Scikit-learn
+jsPDF                  SQLAlchemy               4920 samples
+                       PostgreSQL               41 diseases
+                       JWT Auth                 131 symptoms
+                       Anthropic Claude         100% CV accuracy
+                       OpenAI Whisper API
+                       Docker
+                       Render Web Service
+```
 
 ---
 
@@ -58,22 +66,26 @@ OpenAI Whisper API        100% CV accuracy
 
 ## Tech Stack
 
-**Backend:**
+**Backend**
+
 - Python 3.11, FastAPI, SQLAlchemy
 - PostgreSQL, JWT (python-jose), bcrypt
 - Anthropic SDK, OpenAI SDK
 - Docker, Render
 
-**Frontend:**
+**Frontend**
+
 - React 18, jsPDF
 - Render Static Site
 
-**ML:**
+**ML**
+
 - Scikit-learn, Pandas, NumPy
 - Kaggle Disease-Symptom Dataset (4920 samples)
 - MLflow (experiment tracking)
 
-**DevOps:**
+**DevOps**
+
 - GitHub Actions CI/CD
 - Docker + Render
 - Automated pytest on every push
@@ -81,23 +93,31 @@ OpenAI Whisper API        100% CV accuracy
 ---
 
 ## CI/CD Pipeline
-it push to main
-↓
+
+```
+git push to main
+        |
+        v
 GitHub Actions triggers
-↓
+        |
+        v
 Run pytest (5 tests)
 Build React frontend
-↓
+        |
+        v
 If all pass
-↓
+        |
+        v
 Auto deploy to Render
 Backend + Frontend live
+```
 
 ---
 
 ## ML Model
 
 Trained on the Kaggle Disease-Symptom dataset:
+
 - 4,920 samples across 41 diseases
 - 131 symptom features
 - 100% cross-validated accuracy
@@ -107,12 +127,13 @@ Trained on the Kaggle Disease-Symptom dataset:
 
 ## Local Setup
 
-### Prerequisites
+**Prerequisites**
+
 - Python 3.11
 - Node.js 18+
 - PostgreSQL
 
-### Backend
+**Backend**
 
 ```bash
 cd backend
@@ -123,7 +144,7 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend
+**Frontend**
 
 ```bash
 cd frontend
@@ -131,11 +152,14 @@ npm install
 npm start
 ```
 
-### Environment Variables
+**Environment Variables**
+
+```
 ANTHROPIC_API_KEY=your_key
 OPENAI_API_KEY=your_key
 DATABASE_URL=postgresql://user:pass@localhost:5432/clinicalai
 SECRET_KEY=your_secret_key
+```
 
 ---
 
@@ -147,6 +171,7 @@ pytest tests/ -v
 ```
 
 5 tests covering:
+
 - API health check
 - Doctor registration
 - Doctor login
@@ -159,8 +184,8 @@ pytest tests/ -v
 
 | Feature | Google MedLM | Microsoft DAX | ClinicalAI |
 |---|---|---|---|
-| Price | $$$$ | $$$$ | Free/Open |
-| Multilingual | Limited | Limited | EN/HI/ES |
+| Price | $$$$ | $$$$ | Free / Open |
+| Multilingual | Limited | Limited | EN / HI / ES |
 | Explainable AI | No | No | Yes |
 | Self-hostable | No | No | Yes |
 | Small clinic focus | No | No | Yes |
@@ -170,6 +195,7 @@ pytest tests/ -v
 ## Author
 
 **Raju Kotturi**
+
 - MS Information Technology — UNH Manchester
 - GitHub: [@raju8309](https://github.com/raju8309)
 - LinkedIn: [linkedin.com/in/rajukotturi](https://linkedin.com/in/rajukotturi)
@@ -178,4 +204,4 @@ pytest tests/ -v
 
 ## Disclaimer
 
-ClinicalAI is a research/portfolio project. AI-generated diagnoses and notes should always be reviewed by a licensed medical professional before clinical use.
+ClinicalAI is a research and portfolio project. AI-generated diagnoses and notes should always be reviewed by a licensed medical professional before clinical use.
