@@ -198,7 +198,6 @@ pytest tests/ -v
 
 - MS Information Technology — UNH Manchester
 - GitHub: [@raju8309](https://github.com/raju8309)
-- LinkedIn: [linkedin.com/in/rajukotturi](https://linkedin.com/in/rajukotturi)
 
 ---
 
