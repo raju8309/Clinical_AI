@@ -44,7 +44,7 @@ Render Static Site     FastAPI                  Scikit-learn
 jsPDF                  SQLAlchemy               4920 samples
                        PostgreSQL               41 diseases
                        JWT Auth                 131 symptoms
-                       Anthropic Claude         100% CV accuracy
+                       Anthropic Claude         98% CV accuracy
                        OpenAI Whisper API
                        Docker
                        Render Web Service
